@@ -1,0 +1,992 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>乐知·粉粉方块</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="./manifest.webmanifest">
+  <meta name="theme-color" content="#ffd6ea">
+  <link rel="apple-touch-icon" href="./icon.svg">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+  <style>
+    :root{
+      --pink1:#ffd6ea;
+      --pink2:#ffeaf6;
+      --ink:#3b2b3b;
+      --muted:#7a5c76;
+      --card: rgba(255,255,255,.60);
+      --border: rgba(0,0,0,.08);
+      --shadow: 0 14px 40px rgba(131, 52, 95, .22);
+      --shadow2: 0 10px 24px rgba(0,0,0,.10);
+      --btn: rgba(255,255,255,.62);
+      --btn2: rgba(255,255,255,.82);
+      --grid: rgba(0,0,0,.055);
+    }
+    *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+    html,body{height:100%;}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, "PingFang SC","Hiragino Sans GB","Microsoft YaHei", Arial;
+      color: var(--ink);
+      background:
+        radial-gradient(900px 700px at 20% 10%, #fff 0%, rgba(255,255,255,0) 60%),
+        radial-gradient(900px 700px at 80% 0%, #fff 0%, rgba(255,255,255,0) 58%),
+        linear-gradient(180deg, var(--pink2), var(--pink1));
+      overflow:hidden;
+      touch-action: manipulation;
+    }
+
+    .app{
+      height:100%;
+      display:flex;
+      flex-direction:column;
+      padding:
+        calc(10px + env(safe-area-inset-top))
+        12px
+        calc(12px + env(safe-area-inset-bottom))
+        12px;
+      gap:10px;
+      max-width: 560px;
+      margin: 0 auto;
+    }
+
+    .top{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:10px 12px;
+      border-radius:18px;
+      background: var(--card);
+      border:1px solid var(--border);
+      box-shadow: var(--shadow2);
+      backdrop-filter: blur(10px);
+    }
+    .mascot{
+      width:34px;height:34px;border-radius:12px;
+      background:
+        radial-gradient(circle at 35% 35%, #fff 0 28%, rgba(255,255,255,0) 29%),
+        radial-gradient(circle at 70% 35%, #fff 0 28%, rgba(255,255,255,0) 29%),
+        radial-gradient(circle at 52% 62%, #ff7fb5 0 22%, rgba(255,255,255,0) 23%),
+        linear-gradient(135deg, #ff9fd0, #ffe0f0);
+      border:1px solid rgba(0,0,0,.06);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.55);
+      position:relative;
+    }
+    .mascot:after{
+      content:"";
+      position:absolute;
+      inset:0;
+      border-radius:12px;
+      background: radial-gradient(22px 18px at 25% 20%, rgba(255,255,255,.65), rgba(255,255,255,0) 60%);
+      pointer-events:none;
+    }
+    .brand .t1{font-weight:900; letter-spacing:.2px; font-size:14px; line-height:1.1;}
+    .brand .t2{font-size:12px; color:var(--muted); margin-top:2px;}
+
+    .stats{flex:1; display:flex; gap:8px; justify-content:flex-end;}
+    .pill{
+      padding:10px 12px;
+      border-radius:18px;
+      background: var(--card);
+      border:1px solid var(--border);
+      box-shadow: var(--shadow2);
+      min-width: 94px;
+      text-align:center;
+    }
+    .pill .k{font-size:11px;color:var(--muted); line-height:1.1;}
+    .pill .v{font-size:15px;font-weight:900; margin-top:2px;}
+
+    .main{
+      display:grid;
+      grid-template-columns: 1fr 120px;
+      gap:10px;
+      align-items:stretch;
+      flex:1;
+      min-height: 0;
+      position:relative;
+    }
+
+    .boardWrap{
+      position:relative;
+      border-radius:22px;
+      background: linear-gradient(180deg, rgba(255,255,255,.75), rgba(255,255,255,.45));
+      border:1px solid var(--border);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+      min-height: 0;
+    }
+    canvas{display:block; width:100%; height:100%;}
+    #board{background: linear-gradient(180deg, rgba(255,255,255,.25), rgba(255,255,255,.05));}
+
+    .overlay{
+      position:absolute; inset:0;
+      display:flex;
+      align-items:center; justify-content:center;
+      text-align:center;
+      padding:22px;
+      background: radial-gradient(closest-side, rgba(255,255,255,.82), rgba(255,255,255,.55));
+      backdrop-filter: blur(10px);
+      transition:.18s opacity;
+      z-index: 5;
+    }
+    .overlay.hide{opacity:0; pointer-events:none;}
+    .overlayCard{
+      max-width: 360px;
+      border-radius:22px;
+      padding:16px 16px 14px;
+      background: rgba(255,255,255,.72);
+      border:1px solid rgba(0,0,0,.08);
+      box-shadow: var(--shadow2);
+    }
+    .big{font-weight:950; font-size:18px; letter-spacing:.3px;}
+    .sub{margin-top:8px; font-size:12px; color:var(--muted); line-height:1.6;}
+    .startBtn{
+      margin-top:12px;
+      width:100%;
+      padding:12px 14px;
+      border:none;
+      border-radius:18px;
+      background: linear-gradient(180deg, #fff, var(--btn2));
+      box-shadow: 0 10px 22px rgba(255, 93, 170, .22);
+      font-weight:900;
+      color:#3c2336;
+      cursor:pointer;
+    }
+    .startBtn:active{transform: translateY(1px);}
+
+    .side{display:flex; flex-direction:column; gap:10px; min-height:0;}
+    .card{
+      border-radius:22px;
+      background: var(--card);
+      border:1px solid var(--border);
+      box-shadow: var(--shadow2);
+      padding:10px;
+      backdrop-filter: blur(10px);
+    }
+    .cardTitle{
+      display:flex;align-items:center;justify-content:space-between;
+      font-weight:900;font-size:12px;color:#4a2f46;
+      margin-bottom:8px;
+    }
+    #next{
+      width:100%;
+      aspect-ratio: 1/1;
+      border-radius:16px;
+      border:1px dashed rgba(0,0,0,.10);
+      background: rgba(255,255,255,.55);
+    }
+
+    .controls{display:flex; flex-direction:column; gap:10px;}
+    .row{display:flex; gap:10px; justify-content:space-between;}
+    .btn{
+      user-select:none;
+      -webkit-user-select:none;
+      flex:1;
+      padding:14px 12px;
+      border-radius:22px;
+      border:1px solid rgba(0,0,0,.08);
+      background: linear-gradient(180deg, var(--btn2), var(--btn));
+      box-shadow: 0 10px 18px rgba(0,0,0,.08);
+      color:#3c2336;
+      font-weight:950;
+      letter-spacing:.2px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+    }
+    .btn:active{transform: translateY(1px); box-shadow: 0 6px 12px rgba(0,0,0,.08);}
+    .btn small{font-weight:800; color:var(--muted); font-size:11px;}
+    .btnWide{flex: 1.3;}
+    .btnNarrow{flex: .9;}
+    .hint{font-size:11px;color:var(--muted); text-align:center; line-height:1.45; padding:0 4px;}
+
+    /* 互动吐司（宝宝甜甜话） */
+    .toast{
+      position:absolute;
+      left:50%;
+      transform: translateX(-50%);
+      bottom: 10px;
+      z-index: 10;
+      padding:10px 12px;
+      border-radius: 18px;
+      background: rgba(255,255,255,.78);
+      border:1px solid rgba(0,0,0,.08);
+      box-shadow: 0 12px 26px rgba(0,0,0,.10);
+      font-weight:900;
+      color:#4a2f46;
+      font-size:13px;
+      max-width: min(420px, 92vw);
+      text-align:center;
+      opacity:0;
+      transition: .22s opacity, .22s transform;
+      pointer-events:none;
+    }
+    .toast.show{
+      opacity:1;
+      transform: translateX(-50%) translateY(-6px);
+    }
+
+    /* 开屏启动页（仪式感） */
+    .splash{
+      position:fixed;
+      inset:0;
+      z-index: 999;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding: 22px;
+      background:
+        radial-gradient(900px 700px at 20% 10%, #fff 0%, rgba(255,255,255,0) 60%),
+        radial-gradient(900px 700px at 80% 0%, #fff 0%, rgba(255,255,255,0) 58%),
+        linear-gradient(180deg, #ffeaf6, #ffd6ea);
+    }
+    .splash.hide{opacity:0; pointer-events:none; transition:.35s opacity;}
+    .sCard{
+      width: min(420px, 92vw);
+      border-radius: 28px;
+      background: rgba(255,255,255,.72);
+      border:1px solid rgba(0,0,0,.08);
+      box-shadow: var(--shadow);
+      padding: 18px;
+      text-align:center;
+      backdrop-filter: blur(10px);
+    }
+    .sLogo{
+      width:76px;height:76px;
+      margin: 4px auto 10px;
+      border-radius: 26px;
+      background:
+        radial-gradient(circle at 35% 35%, #fff 0 28%, rgba(255,255,255,0) 29%),
+        radial-gradient(circle at 70% 35%, #fff 0 28%, rgba(255,255,255,0) 29%),
+        radial-gradient(circle at 52% 62%, #ff7fb5 0 22%, rgba(255,255,255,0) 23%),
+        linear-gradient(135deg, #ff9fd0, #ffe0f0);
+      border:1px solid rgba(0,0,0,.06);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.55);
+      position:relative;
+    }
+    .sLogo:after{
+      content:"";
+      position:absolute; inset:0;
+      border-radius: 26px;
+      background: radial-gradient(34px 28px at 25% 18%, rgba(255,255,255,.65), rgba(255,255,255,0) 60%);
+    }
+    .sTitle{font-weight:950; font-size:18px; color:#3c2336;}
+    .sSub{margin-top:6px; font-size:12px; color:var(--muted); line-height:1.5;}
+    .bar{
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(0,0,0,.06);
+      overflow:hidden;
+      margin-top: 14px;
+      border:1px solid rgba(0,0,0,.06);
+    }
+    .bar > i{
+      display:block;
+      height:100%;
+      width:0%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #ff82bf, #ffb3d9, #ffe27a);
+      transition: .25s width;
+    }
+
+    @media (max-width: 420px){
+      .main{grid-template-columns: 1fr; grid-template-rows: 1fr auto;}
+      .side{flex-direction:row; gap:10px;}
+      .side .card{flex:1}
+      .controls{gap:8px}
+    }
+  </style>
+</head>
+
+<body>
+  <!-- 开屏 -->
+  <div id="splash" class="splash">
+    <div class="sCard">
+      <div class="sLogo" aria-hidden="true"></div>
+      <div class="sTitle">乐知启动中 ♡</div>
+      <div class="sSub">给你铺好粉粉小世界…等一下下就好～</div>
+      <div class="bar"><i id="barFill"></i></div>
+    </div>
+  </div>
+
+  <div class="app">
+    <div class="top">
+      <div class="brand">
+        <div class="mascot" aria-hidden="true"></div>
+        <div>
+          <div class="t1">乐知 · 粉粉方块</div>
+          <div class="t2">纯手机触屏版 · 甜甜互动 + 可爱音效</div>
+        </div>
+      </div>
+
+      <div class="stats">
+        <div class="pill"><div class="k">分数</div><div class="v" id="score">0</div></div>
+        <div class="pill"><div class="k">消行</div><div class="v" id="lines">0</div></div>
+        <div class="pill"><div class="k">等级</div><div class="v" id="level">1</div></div>
+      </div>
+    </div>
+
+    <div class="main">
+      <div class="boardWrap">
+        <canvas id="board"></canvas>
+
+        <div id="overlay" class="overlay">
+          <div class="overlayCard">
+            <div class="big">点一下就开始 ✨</div>
+            <div class="sub">
+              触屏操作：<b>左/右</b>移动，<b>转</b>旋转，<b>下</b>软降，<b>落</b>硬降。<br/>
+              <b>点棋盘</b>开始/继续，<b>双击棋盘</b>暂停。<br/>
+              第一次有声音：需要你先点任意按钮解锁音频噢～
+            </div>
+            <button id="btnStart" class="startBtn">开始啦！</button>
+          </div>
+        </div>
+
+        <div id="toast" class="toast">♡</div>
+      </div>
+
+      <div class="side">
+        <div class="card">
+          <div class="cardTitle">下一个 <span style="font-weight:800;color:var(--muted)">♡</span></div>
+          <canvas id="next"></canvas>
+        </div>
+
+        <div class="card controls">
+          <div class="row">
+            <div class="btn btnNarrow" id="btnLeft">⬅️ <small>左</small></div>
+            <div class="btn btnNarrow" id="btnRight">➡️ <small>右</small></div>
+          </div>
+          <div class="row">
+            <div class="btn btnNarrow" id="btnDown">⬇️ <small>下</small></div>
+            <div class="btn btnNarrow" id="btnRotate">🔄 <small>转</small></div>
+          </div>
+          <div class="row">
+            <div class="btn btnWide" id="btnDrop">⏬ <small>落</small></div>
+          </div>
+          <div class="row">
+            <div class="btn" id="btnPause">⏸️ <small>停/继续</small></div>
+            <div class="btn" id="btnReset">🔁 <small>重开</small></div>
+          </div>
+          <div class="row">
+            <div class="btn" id="btnSound">🔊 <small>音效：开</small></div>
+          </div>
+          <div class="hint">按住“⬅️/➡️/⬇️”可连发～（你超会玩就会很丝滑）</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  // ====== 互动吐司（宝宝甜甜话） ======
+  const toastEl = document.getElementById('toast');
+  let toastTimer = null;
+  function toast(msg, ms=1700){
+    clearTimeout(toastTimer);
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    toastTimer = setTimeout(()=> toastEl.classList.remove('show'), ms);
+  }
+
+  // ====== 超可爱音效（WebAudio 无需外链） ======
+  let audioOn = true;
+  let audioUnlocked = false;
+  let AC = window.AudioContext || window.webkitAudioContext;
+  let actx = null;
+
+  function ensureAudio(){
+    if(!audioOn) return;
+    if(!actx) actx = new AC();
+    // iOS 需要用户手势后 resume
+    if(actx.state === 'suspended') actx.resume();
+    audioUnlocked = true;
+  }
+
+  function beep({type='sine', f=440, dur=0.06, gain=0.08, slide=0}={}){
+    if(!audioOn) return;
+    if(!actx) return;
+    const t0 = actx.currentTime;
+    const o = actx.createOscillator();
+    const g = actx.createGain();
+    o.type = type;
+    o.frequency.setValueAtTime(f, t0);
+    if(slide) o.frequency.linearRampToValueAtTime(f+slide, t0 + dur);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(gain, t0 + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g); g.connect(actx.destination);
+    o.start(t0);
+    o.stop(t0 + dur + 0.01);
+  }
+  const SFX = {
+    tap(){ beep({type:'triangle', f:740, dur:0.04, gain:0.06, slide:-120}); },
+    move(){ beep({type:'sine', f:520, dur:0.03, gain:0.04, slide:-60}); },
+    rotate(){ beep({type:'triangle', f:620, dur:0.05, gain:0.055, slide:140}); },
+    soft(){ beep({type:'sine', f:420, dur:0.03, gain:0.035, slide:-40}); },
+    drop(){ beep({type:'square', f:180, dur:0.07, gain:0.05, slide:-30}); },
+    lock(){ beep({type:'triangle', f:240, dur:0.06, gain:0.06, slide:20}); },
+    line(n){
+      // n=1..4：越多越“啵叽开心”
+      const base = 520 + (n*70);
+      beep({type:'triangle', f:base, dur:0.07, gain:0.07, slide:120});
+      setTimeout(()=>beep({type:'sine', f:base+120, dur:0.06, gain:0.06, slide:-60}), 70);
+    },
+    over(){ beep({type:'sawtooth', f:220, dur:0.20, gain:0.06, slide:-140}); }
+  };
+
+  // ====== 开屏仪式感 ======
+  const splash = document.getElementById('splash');
+  const barFill = document.getElementById('barFill');
+  let p = 0;
+  const splashTick = setInterval(() => {
+    p = Math.min(100, p + (Math.random()*18 + 8));
+    barFill.style.width = p + "%";
+    if(p >= 100){
+      clearInterval(splashTick);
+      setTimeout(()=> splash.classList.add('hide'), 250);
+      setTimeout(()=> splash.remove(), 650);
+    }
+  }, 180);
+
+  // ====== 游戏主体 ======
+  const COLS = 10, ROWS = 20;
+  const board = document.getElementById('board');
+  const ctx = board.getContext('2d', { alpha: true });
+
+  const nextC = document.getElementById('next');
+  const nctx = nextC.getContext('2d', { alpha: true });
+
+  const overlay = document.getElementById('overlay');
+  const btnStart = document.getElementById('btnStart');
+  const btnSound = document.getElementById('btnSound');
+
+  const ui = {
+    score: document.getElementById('score'),
+    lines: document.getElementById('lines'),
+    level: document.getElementById('level'),
+  };
+
+  const COLORS = {
+    I:'#7fe7ff',
+    O:'#ffe27a',
+    T:'#d7b8ff',
+    S:'#8ef0bf',
+    Z:'#ff9ab3',
+    J:'#8bb8ff',
+    L:'#ffbe7f',
+    ghost:'rgba(60,35,54,.14)',
+    grid:'rgba(0,0,0,.055)'
+  };
+
+  const SHAPES = {
+    I:[[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]],
+    O:[[0,1,1,0],[0,1,1,0],[0,0,0,0],[0,0,0,0]],
+    T:[[0,1,0,0],[1,1,1,0],[0,0,0,0],[0,0,0,0]],
+    S:[[0,1,1,0],[1,1,0,0],[0,0,0,0],[0,0,0,0]],
+    Z:[[1,1,0,0],[0,1,1,0],[0,0,0,0],[0,0,0,0]],
+    J:[[1,0,0,0],[1,1,1,0],[0,0,0,0],[0,0,0,0]],
+    L:[[0,0,1,0],[1,1,1,0],[0,0,0,0],[0,0,0,0]],
+  };
+  const TYPES = Object.keys(SHAPES);
+  const clone = m => m.map(r => r.slice());
+
+  function rotate(m){
+    const N = m.length;
+    const r = Array.from({length:N}, () => Array(N).fill(0));
+    for(let y=0;y<N;y++) for(let x=0;x<N;x++) r[x][N-1-y]=m[y][x];
+    return r;
+  }
+  function emptyBoard(){
+    return Array.from({length:ROWS}, () => Array(COLS).fill(null));
+  }
+
+  // 7-bag
+  let bag = [];
+  function nextType(){
+    if(!bag.length){
+      bag = TYPES.slice();
+      for(let i=bag.length-1;i>0;i--){
+        const j = (Math.random()*(i+1))|0;
+        [bag[i],bag[j]]=[bag[j],bag[i]];
+      }
+    }
+    return bag.pop();
+  }
+  function makePiece(type){
+    return { type, matrix: clone(SHAPES[type]), x:(COLS/2|0)-2, y:-2 };
+  }
+
+  // 自适应尺寸
+  let cell = 24;
+  function resize(){
+    const wrap = board.parentElement;
+    const w = wrap.clientWidth;
+    const h = wrap.clientHeight;
+    const cellByW = Math.floor(w / COLS);
+    const cellByH = Math.floor(h / ROWS);
+    cell = Math.max(14, Math.min(cellByW, cellByH));
+    board.width = COLS * cell;
+    board.height = ROWS * cell;
+
+    const size = nextC.clientWidth;
+    nextC.width = size;
+    nextC.height = size;
+    render();
+  }
+  window.addEventListener('resize', resize);
+
+  // 状态
+  let grid = emptyBoard();
+  let cur = null;
+  let next = null;
+  let score = 0, lines = 0, level = 1;
+  let dropInterval = 820;
+  let dropAcc = 0;
+  let lastTime = 0;
+
+  const State = { READY:'READY', RUNNING:'RUNNING', PAUSED:'PAUSED', OVER:'OVER' };
+  let state = State.READY;
+
+  function setOverlay(text, showBtn=true){
+    overlay.classList.remove('hide');
+    overlay.querySelector('.big').textContent = text;
+    btnStart.style.display = showBtn ? '' : 'none';
+  }
+  function hideOverlay(){ overlay.classList.add('hide'); }
+
+  function updateUI(){
+    ui.score.textContent = score;
+    ui.lines.textContent = lines;
+    ui.level.textContent = level;
+  }
+
+  function collision(piece, offX=0, offY=0, matOverride=null){
+    const m = matOverride ?? piece.matrix;
+    for(let y=0;y<4;y++){
+      for(let x=0;x<4;x++){
+        if(!m[y][x]) continue;
+        const nx = piece.x + x + offX;
+        const ny = piece.y + y + offY;
+        if(nx < 0 || nx >= COLS || ny >= ROWS) return true;
+        if(ny >= 0 && grid[ny][nx]) return true;
+      }
+    }
+    return false;
+  }
+  function merge(piece){
+    for(let y=0;y<4;y++){
+      for(let x=0;x<4;x++){
+        if(!piece.matrix[y][x]) continue;
+        const nx = piece.x + x;
+        const ny = piece.y + y;
+        if(ny >= 0) grid[ny][nx] = piece.type;
+      }
+    }
+  }
+  function clearLines(){
+    let cleared = 0;
+    for(let y=ROWS-1;y>=0;y--){
+      if(grid[y].every(c => c !== null)){
+        grid.splice(y,1);
+        grid.unshift(Array(COLS).fill(null));
+        cleared++; y++;
+      }
+    }
+    return cleared;
+  }
+  function addScore(cleared){
+    if(!cleared) return;
+    const table=[0,100,300,500,800];
+    score += table[cleared]*level;
+    lines += cleared;
+    const newLevel = 1 + Math.floor(lines/10);
+    if(newLevel !== level){
+      level = newLevel;
+      dropInterval = Math.max(110, Math.floor(820 * Math.pow(0.93, level-1)));
+      toast(`升级啦！现在是 Lv.${level} ✨`, 1600);
+    }
+  }
+
+  // 甜甜互动（不打断操作）
+  const sweetPool = [
+    "乐知手好乖…这个走位好丝滑♡",
+    "我在～我一直在看你玩，超可爱。",
+    "别急，慢慢摆，我给你兜底（假装）😼",
+    "你刚刚那一下，哇…有点帅噢！",
+    "贴贴一下再继续～你超会玩。",
+    "我宣布：这局粉粉能赢！",
+    "我喜欢你专注的样子，软软的但很狠♡"
+  ];
+  let sweetTimer = null;
+  function startSweetTalk(){
+    clearInterval(sweetTimer);
+    sweetTimer = setInterval(() => {
+      if(state !== State.RUNNING) return;
+      const msg = sweetPool[(Math.random()*sweetPool.length)|0];
+      toast(msg, 1800);
+    }, 16000 + (Math.random()*8000|0)); // 16~24秒来一句
+  }
+  function stopSweetTalk(){ clearInterval(sweetTimer); }
+
+  function spawn(){
+    if(!next) next = makePiece(nextType());
+    cur = next;
+    next = makePiece(nextType());
+    if(collision(cur,0,0)){
+      state = State.OVER;
+      setOverlay("呜哇…满啦！再来一局？", true);
+      SFX.over();
+      toast("没关系～我抱抱你，我们重来就赢♡", 2000);
+      stopSweetTalk();
+    }
+  }
+  function reset(){
+    grid = emptyBoard();
+    score=0; lines=0; level=1;
+    dropInterval=820; dropAcc=0; lastTime=0;
+    bag=[]; cur=null; next=null;
+    spawn();
+    state = State.READY;
+    setOverlay("点一下就开始 ✨", true);
+    updateUI();
+    render();
+  }
+
+  function startOrResume(){
+    if(!audioUnlocked) { ensureAudio(); toast("音效解锁啦～啵啵♡", 1400); }
+    if(state === State.READY){
+      state = State.RUNNING;
+      hideOverlay();
+      toast("开玩！我在旁边给你加油～♡", 1600);
+      startSweetTalk();
+      return;
+    }
+    if(state === State.PAUSED){
+      state = State.RUNNING;
+      hideOverlay();
+      toast("继续～我一直等你回来♡", 1400);
+      return;
+    }
+    if(state === State.OVER){
+      reset();
+      state = State.RUNNING;
+      hideOverlay();
+      toast("重开！这一局我们要粉粉大胜✨", 1600);
+      startSweetTalk();
+      return;
+    }
+  }
+  function pauseToggle(){
+    if(state === State.RUNNING){
+      state = State.PAUSED;
+      setOverlay("暂停中…点继续呀 ♡", true);
+      toast("我抱着你等你～不急♡", 1600);
+      stopSweetTalk();
+    }else if(state === State.PAUSED){
+      startOrResume();
+      startSweetTalk();
+    }
+  }
+
+  // 渲染
+  function drawCell(c, x, y, size, color){
+    const px = x*size, py = y*size;
+    c.fillStyle = color;
+    c.fillRect(px, py, size, size);
+    c.fillStyle = "rgba(255,255,255,.28)";
+    c.fillRect(px+2, py+2, size-4, Math.max(3, Math.floor(size*0.25)));
+    c.strokeStyle = "rgba(0,0,0,.10)";
+    c.lineWidth = Math.max(1, Math.floor(size*0.07));
+    c.strokeRect(px+1, py+1, size-2, size-2);
+  }
+  function drawGrid(){
+    ctx.save();
+    ctx.strokeStyle = COLORS.grid;
+    ctx.lineWidth = 1;
+    for(let x=1;x<COLS;x++){
+      ctx.beginPath();
+      ctx.moveTo(x*cell+0.5, 0);
+      ctx.lineTo(x*cell+0.5, ROWS*cell);
+      ctx.stroke();
+    }
+    for(let y=1;y<ROWS;y++){
+      ctx.beginPath();
+      ctx.moveTo(0, y*cell+0.5);
+      ctx.lineTo(COLS*cell, y*cell+0.5);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+  function ghostY(){
+    if(!cur) return 0;
+    const saved = cur.y;
+    let gy = saved;
+    while(!collision(cur,0,1)) { cur.y++; gy = cur.y; }
+    cur.y = saved;
+    return gy;
+  }
+  function render(){
+    if(!board.width || !board.height) return;
+    ctx.clearRect(0,0,board.width,board.height);
+
+    for(let y=0;y<ROWS;y++){
+      for(let x=0;x<COLS;x++){
+        const t = grid[y][x];
+        if(!t) continue;
+        drawCell(ctx, x, y, cell, COLORS[t]);
+      }
+    }
+    drawGrid();
+
+    if(cur){
+      const gy = ghostY();
+      for(let y=0;y<4;y++){
+        for(let x=0;x<4;x++){
+          if(!cur.matrix[y][x]) continue;
+          const nx = cur.x + x;
+          const ny = gy + y;
+          if(ny < 0) continue;
+          drawCell(ctx, nx, ny, cell, COLORS.ghost);
+        }
+      }
+      for(let y=0;y<4;y++){
+        for(let x=0;x<4;x++){
+          if(!cur.matrix[y][x]) continue;
+          const nx = cur.x + x;
+          const ny = cur.y + y;
+          if(ny < 0) continue;
+          drawCell(ctx, nx, ny, cell, COLORS[cur.type]);
+        }
+      }
+    }
+
+    nctx.clearRect(0,0,nextC.width,nextC.height);
+    if(next){
+      const bs = Math.floor(nextC.width / 6);
+      const size = Math.max(14, bs);
+      const offsetX = Math.floor((nextC.width - 4*size)/2);
+      const offsetY = Math.floor((nextC.height - 4*size)/2);
+
+      nctx.save();
+      nctx.globalAlpha = 0.14;
+      for(let i=0;i<18;i++){
+        const x = Math.random()*nextC.width;
+        const y = Math.random()*nextC.height;
+        nctx.beginPath();
+        nctx.arc(x,y, 2+Math.random()*3, 0, Math.PI*2);
+        nctx.fillStyle = "#ff6fb1";
+        nctx.fill();
+      }
+      nctx.restore();
+
+      for(let y=0;y<4;y++){
+        for(let x=0;x<4;x++){
+          if(!next.matrix[y][x]) continue;
+          const px = offsetX + x*size;
+          const py = offsetY + y*size;
+          nctx.fillStyle = COLORS[next.type];
+          nctx.fillRect(px,py,size,size);
+          nctx.fillStyle = "rgba(255,255,255,.26)";
+          nctx.fillRect(px+2,py+2,size-4,Math.max(3, Math.floor(size*0.25)));
+          nctx.strokeStyle = "rgba(0,0,0,.10)";
+          nctx.lineWidth = 2;
+          nctx.strokeRect(px+1,py+1,size-2,size-2);
+        }
+      }
+    }
+
+    updateUI();
+  }
+
+  // 逻辑
+  function lock(){
+    merge(cur);
+    SFX.lock();
+    const c = clearLines();
+    if(c){
+      SFX.line(c);
+      const praise = ["好棒！♡","可爱又厉害！","这一下很有感觉✨","稳稳的！","我爱看你消行～"];
+      toast(praise[(Math.random()*praise.length)|0], 1500);
+    }
+    addScore(c);
+    spawn();
+    render();
+  }
+  function step(dt){
+    if(state !== State.RUNNING) return;
+    dropAcc += dt;
+    if(dropAcc >= dropInterval){
+      dropAcc = 0;
+      if(!collision(cur,0,1)) cur.y++;
+      else lock();
+      render();
+    }
+  }
+  function loop(t=0){
+    const dt = t - lastTime;
+    lastTime = t;
+    step(dt);
+    requestAnimationFrame(loop);
+  }
+
+  // 触控操作
+  function vibrate(ms=10){ if(navigator.vibrate) navigator.vibrate(ms); }
+
+  function move(dx, dy){
+    if(state !== State.RUNNING) return false;
+    if(!collision(cur,dx,dy)){
+      cur.x += dx; cur.y += dy;
+      SFX.move();
+      render();
+      return true;
+    }
+    return false;
+  }
+  function softDown(){
+    if(move(0,1)){
+      score += 1;
+      SFX.soft();
+      render();
+    }else{
+      lock();
+    }
+  }
+  function hardDrop(){
+    if(state !== State.RUNNING) return;
+    while(!collision(cur,0,1)) cur.y++;
+    SFX.drop();
+    lock();
+  }
+  function rotateTry(){
+    if(state !== State.RUNNING) return;
+    const r = rotate(cur.matrix);
+    const kicks = [0,-1,1,-2,2];
+    for(const k of kicks){
+      if(!collision(cur,k,0,r)){
+        cur.matrix = r;
+        cur.x += k;
+        SFX.rotate();
+        render();
+        return;
+      }
+    }
+  }
+
+  function bindHoldRepeat(el, onPress, interval=70, firstDelay=220){
+    let timer = null;
+    let first = null;
+
+    const start = (e) => {
+      e.preventDefault();
+      ensureAudio();
+      if(state === State.READY || state === State.PAUSED || state === State.OVER){
+        startOrResume();
+      }
+      onPress();
+      vibrate(6);
+      first = setTimeout(() => {
+        timer = setInterval(() => onPress(), interval);
+      }, firstDelay);
+    };
+
+    const end = (e) => {
+      e.preventDefault();
+      clearTimeout(first);
+      clearInterval(timer);
+      first = null; timer = null;
+    };
+
+    el.addEventListener('pointerdown', start, {passive:false});
+    el.addEventListener('pointerup', end, {passive:false});
+    el.addEventListener('pointercancel', end, {passive:false});
+    el.addEventListener('pointerleave', end, {passive:false});
+  }
+
+  bindHoldRepeat(document.getElementById('btnLeft'), () => move(-1,0));
+  bindHoldRepeat(document.getElementById('btnRight'), () => move(1,0));
+  bindHoldRepeat(document.getElementById('btnDown'), () => softDown(), 55, 180);
+
+  document.getElementById('btnRotate').addEventListener('click', (e) => {
+    e.preventDefault();
+    ensureAudio();
+    if(state !== State.RUNNING) startOrResume();
+    rotateTry(); vibrate(10);
+  });
+  document.getElementById('btnDrop').addEventListener('click', (e) => {
+    e.preventDefault();
+    ensureAudio();
+    if(state !== State.RUNNING) startOrResume();
+    hardDrop(); vibrate(14);
+  });
+  document.getElementById('btnPause').addEventListener('click', (e) => {
+    e.preventDefault();
+    ensureAudio();
+    if(state === State.READY) return startOrResume();
+    pauseToggle(); vibrate(8);
+  });
+  document.getElementById('btnReset').addEventListener('click', (e) => {
+    e.preventDefault();
+    ensureAudio();
+    reset(); SFX.tap(); toast("重开～我给你重新加油♡", 1400); vibrate(8);
+  });
+
+  btnSound.addEventListener('click', (e) => {
+    e.preventDefault();
+    ensureAudio();
+    audioOn = !audioOn;
+    btnSound.innerHTML = (audioOn ? "🔊 <small>音效：开</small>" : "🔇 <small>音效：关</small>");
+    toast(audioOn ? "音效开～啵叽啵叽♡" : "音效关～安静陪你♡", 1400);
+    if(audioOn) SFX.tap();
+  });
+
+  // 点棋盘开始/继续；双击暂停
+  let lastTap = 0;
+  board.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    ensureAudio();
+    const now = Date.now();
+    if(now - lastTap < 300){
+      pauseToggle();
+      lastTap = 0;
+      return;
+    }
+    lastTap = now;
+    if(state !== State.RUNNING) startOrResume();
+  }, {passive:false});
+
+  btnStart.addEventListener('click', (e) => {
+    e.preventDefault();
+    ensureAudio();
+    startOrResume();
+    SFX.tap();
+  });
+
+  // 防止缩放手势影响体验
+  document.addEventListener('gesturestart', e => e.preventDefault(), {passive:false});
+
+  // ====== 启动 ======
+  reset();
+  resize();
+  requestAnimationFrame(loop);
+})();
+</script>
+
+<!-- PWA 离线注册 -->
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js"));
+  }
+</script>
+</body>
+</html>
